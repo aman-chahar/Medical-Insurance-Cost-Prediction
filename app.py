@@ -1,78 +1,69 @@
-# Import required libraries
 import streamlit as st
-import pickle
+import numpy as np
 import pandas as pd
+import pickle
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
 
 # Load the trained model
-model_filename = 'banglore_home_prices_model.pickle'
-with open(model_filename, 'rb') as file:
-    model = pickle.load(file)
+pickle_in = open("regressor.pkl", "rb")
+regressor = pickle.load(pickle_in)
 
-# Load the dataset used for training
-df_filename = 'bhp.csv'
-df = pd.read_csv(df_filename)
+# App title
+st.title("Insurance Cost Prediction")
 
-# Create a Streamlit web app
-st.title('Bangalore House Price Prediction')
+# Sidebar with user input
+st.sidebar.header("User Input Features")
 
-# Sidebar with input fields
-st.sidebar.header('Enter Property Details')
+# Age
+age = st.sidebar.slider("Age", 18, 64, 30)
 
-# Location
-locations = df.columns[3:]
-location = st.sidebar.selectbox('Location', locations)
+# Sex
+sex = st.sidebar.selectbox("Sex", ["Male", "Female"])
 
-# Total Square Feet
-sqft = st.sidebar.slider('Total Square Feet', min_value=100, max_value=10000, value=1000, step=100)
+# BMI
+bmi = st.sidebar.slider("BMI (Body Mass Index)", 10.0, 50.0, 25.0)
 
-# Number of Bedrooms (BHK)
-bhk = st.sidebar.number_input('Number of Bedrooms (BHK)', min_value=1, max_value=10, value=2)
+# Children
+children = st.sidebar.slider("Number of Children/Dependents", 0, 10, 0)
 
-# Number of Bathrooms
-bath = st.sidebar.number_input('Number of Bathrooms', min_value=1, max_value=10, value=2)
+# Smoker
+smoker = st.sidebar.selectbox("Smoker", ["No", "Yes"])
 
-# Predict the price
-def predict_price(location, sqft, bhk, bath):
-    loc_index = df.columns.get_loc(location)
-    x = [sqft, bath, bhk] + [0] * (len(df.columns) - 3)
-    if loc_index >= 0:
-        x[loc_index] = 1
-    price = model.predict([x])[0]
-    return price
+# Region
+region = st.sidebar.selectbox("Region", ["Southeast", "Southwest", "Northeast", "Northwest"])
 
-if st.sidebar.button('Predict Price'):
-    predicted_price = predict_price(location, sqft, bhk, bath)
-    st.sidebar.subheader(f'Predicted Price: ₹{predicted_price:.2f} Lakhs')
+# Encoding categorical inputs
+sex = 1 if sex == "Female" else 0
+smoker = 0 if smoker == "Yes" else 1
+region_encoded = {"Southeast": 0, "Southwest": 1, "Northeast": 2, "Northwest": 3}
+region = region_encoded[region]
 
-# Data Exploration
-st.subheader('Data Exploration')
-st.write(df.head(10))
+# Create feature vector
+features = np.array([age, sex, bmi, children, smoker, region]).reshape(1, -1)
 
-# Display scatter plot
-st.subheader('Scatter Plot for Price vs. Square Feet')
-st.scatter_chart(df[['total_sqft', 'price']])
+# Make prediction
+if st.button("Predict"):
+    prediction = regressor.predict(features)
+    st.header("Prediction")
+    st.write(f"The estimated insurance cost is USD {prediction[0]:.2f}")
 
-# Display histogram for price per square feet
-st.subheader('Histogram for Price Per Square Feet')
-st.bar_chart(df['price_per_sqft'])
+# Model performance metrics
+st.sidebar.title("Model Performance Metrics")
 
-# Display histogram for number of bedrooms
-st.subheader('Histogram for Number of Bedrooms')
-st.bar_chart(df['bhk'])
 
-# Display histogram for number of bathrooms
-st.subheader('Histogram for Number of Bathrooms')
-st.bar_chart(df['bath'])
+# Input data display
+st.sidebar.title("Input Data")
+st.sidebar.write("Input data used for the prediction:")
+st.sidebar.write(f"Age: {age}")
+st.sidebar.write(f"Sex: {sex}")
+st.sidebar.write(f"BMI: {bmi}")
+st.sidebar.write(f"Children: {children}")
+st.sidebar.write(f"Smoker: {smoker}")
+st.sidebar.write(f"Region: {region}")
 
-# Display a link to the dataset
-st.subheader('Download the Dataset')
-st.markdown('[Download the dataset](https://www.kaggle.com/amitabhajoy/bengaluru-house-price-data)')
+# Display dataset analysis and visualizations (optional)
+st.sidebar.title("Dataset Analysis and Visualizations")
+st.sidebar.write("Dataset analysis and visualizations can be displayed here.")
 
-# Display information about the project
-st.subheader('About')
-st.write('This web app provides a simple interface for predicting house prices in Bangalore based on location, square feet area, number of bedrooms, and number of bathrooms.')
-
-# Run the Streamlit app
-if __name__ == '__main__':
-    st.set_page_config(page_title="Bangalore House Price Prediction", page_icon="🏠", layout="wide")
-    st.run()
